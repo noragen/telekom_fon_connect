@@ -10,7 +10,7 @@ import os                                                                       
 import requests                                                                          # For http(s) reguests in python
 import sys                                                                               # For exit (codes) and for correct http debug Log in debug logging
 import time                                                                              # For sleep in while loop
-from bs4 import BeautifulSoup                                                            # Import BeautifulSoup for parsing html
+import re																				 # For getting the input name and value attributes
 import ast                                                                               # To convert the imported whitelist dict out of config to an python dict (is a string when read via config)
 import json                                                                              # To communicate with telekom rest api
 try:                                                                                     # Import of urllib needed for url decode
@@ -148,12 +148,11 @@ def do_login(username,password,test_url,rlp_request_whitelist,telekom_api_endpoi
 
     logging.debug('Start parsing html to get post data')
     try:                                                                                  # Try parsing ...
-        parsed_fon_html = BeautifulSoup(fon_source['rsp_content'], 'lxml')                # Parse HTML of login page request
-        #logoff_page = 'logoffpage'                                                       # Save logoff url
-        form = parsed_fon_html.body.find('div', attrs={'id':'page-container'})            # Find div with post infos
-        logout_url = form.find('div').get('data-ng-init').split("'")[1]                   # Get Logout url: in div page-container -> angular div with name/class/id (whatever called in angular) data-ng-init -> split at ' and save url in the 's
-        inputs = form.find_all('input') # Parse out all inputs                            # Get inputs of div
-        divdata = dict( (field.get('name'), field.get('value')) for field in inputs)      # Fill formdata dict
+        s = fon_source['rsp_content']                                                     # s = source html
+        s=s[s.find('id="page-container'):]                                                # find area of inputs
+        s=s[s.find('>')+1:].strip()                                                       # find area of inputs
+		logout_url = s[s.find("logoffURL"):s.find("logoffURL")+s[s.find("logoffURL"):].find('>')].split("'")[1]
+		divdata = dict(re.findall('name="(.*?)" value="(.*?)"', s))						   # Get inputs of div, Fill formdata dict
         logging.debug('Post data found')
     except Exception as e:                                                                # ... catch exception if html code could not be parsed as wanted
         logging.error('Error when parsing html code to get post data. Either a (temporary) error or script is not working anymore. Will try again')
